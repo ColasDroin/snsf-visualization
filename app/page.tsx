@@ -1,6 +1,9 @@
+import D3Banner from "./components/Banner";
+
 export default function Home() {
   return (
-    <div className="items-center justify-items-center min-h-screen">
+    <div className="">
+      <D3Banner />
       <p>Test</p>
     </div>
   );
