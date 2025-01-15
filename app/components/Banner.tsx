@@ -15,6 +15,7 @@ interface CircleData {
 const D3Banner: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isReversed, setIsReversed] = useState(false); // Track reverse state
   const currentTransitionRef = useRef<d3.Transition<
     SVGCircleElement,
     CircleData,
@@ -28,20 +29,22 @@ const D3Banner: React.FC = () => {
     unknown
   > | null>(null);
 
+  const initialCircles = useRef<CircleData[]>([]);
+  const movedCircles = useRef<CircleData[]>([]);
+
   const playAnimation = () => {
-    console.log("play");
-    console.log(isPlaying);
     if (isPlaying || !circleSelectionRef.current) return;
     setIsPlaying(true);
+
     currentTransitionRef.current = circleSelectionRef.current
       .transition()
       .duration(2000)
       .ease(d3.easeCubicOut)
       .delay((d, i) => i * 3)
-      .attr("cx", (d) => d.x!)
-      .attr("cy", (d) => d.y!)
+      .attr("cx", (d) => (isReversed ? d.x! : movedCircles.current[d.idx].x!))
+      .attr("cy", (d) => (isReversed ? d.y! : movedCircles.current[d.idx].y!))
       .attr("fill", (d) => d.fill)
-      .on("end", () => setIsPlaying(false)); // Reset playing state when animation ends
+      .on("end", () => setIsPlaying(false));
   };
 
   const pauseAnimation = () => {
@@ -53,24 +56,18 @@ const D3Banner: React.FC = () => {
   const restartAnimation = () => {
     pauseAnimation();
     if (!circleSelectionRef.current) return;
+    setIsReversed(false);
     circleSelectionRef.current
-      .attr("cx", (d) => d.x)
-      .attr("cy", (d) => d.y)
-      .attr("fill", (d) => d.fill);
+      .attr("cx", (d) => initialCircles.current[d.idx].x!)
+      .attr("cy", (d) => initialCircles.current[d.idx].y!)
+      .attr("fill", (d) => initialCircles.current[d.idx].fill);
     playAnimation();
   };
 
   const reverseAnimation = () => {
     pauseAnimation();
-    if (!circleSelectionRef.current) return;
-    circleSelectionRef.current
-      .transition()
-      .duration(2000)
-      .ease(d3.easeCubicOut)
-      .delay((d, i) => i * 3)
-      .attr("cx", (d) => d.x)
-      .attr("cy", (d) => d.y)
-      .attr("fill", (d) => d.fill);
+    setIsReversed((prev) => !prev);
+    playAnimation();
   };
 
   useEffect(() => {
@@ -110,11 +107,10 @@ const D3Banner: React.FC = () => {
 
     const xOffset = width / 2;
     const yOffsetPerGroup = height / 3;
-    const movedCircles: CircleData[] = [];
 
     groups.forEach((group, groupIndex) => {
       circlesPerGroup[group].forEach((circle, index) => {
-        movedCircles.push({
+        movedCircles.current.push({
           ...circle,
           x: circlesPerGroup[group][index].x! + xOffset,
           y: circlesPerGroup[group][index].y! + yOffsetPerGroup * groupIndex,
@@ -123,34 +119,24 @@ const D3Banner: React.FC = () => {
       });
     });
 
-    movedCircles.sort((a, b) => a.idx - b.idx);
+    movedCircles.current.sort((a, b) => a.idx - b.idx);
+    initialCircles.current = circles;
 
-    const selection_1 = svg
+    const selection = svg
       .selectAll<SVGCircleElement, CircleData>("circle")
       .data(circles, (d) => d.idx)
       .enter()
       .append("circle")
-      .attr("cx", (d) => d.x)
-      .attr("cy", (d) => d.y)
+      .attr("cx", (d) => d.x!)
+      .attr("cy", (d) => d.y!)
       .attr("r", (d) => d.r - padding)
       .attr("fill", (d) => d.fill);
 
-    const selection_2 = svg
-      .selectAll<SVGCircleElement, CircleData>("circle")
-      .data(movedCircles, (d) => d.idx)
-      .enter()
-      .append("circle")
-      .attr("cx", (d) => d.x)
-      .attr("cy", (d) => d.y)
-      .attr("r", (d) => d.r - padding)
-      .attr("fill", (d) => d.fill);
-
-    circleSelectionRef.current = selection_1;
+    circleSelectionRef.current = selection;
 
     // Optionally, start animation automatically
     // playAnimation();
 
-    // Cleanup on unmount
     return () => {
       if (circleSelectionRef.current) {
         circleSelectionRef.current.interrupt();
