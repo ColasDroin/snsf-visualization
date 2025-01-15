@@ -32,17 +32,17 @@ const D3Banner: React.FC = () => {
   const initialCircles = useRef<CircleData[]>([]);
   const movedCircles = useRef<CircleData[]>([]);
 
-  const playAnimation = () => {
-    if (isPlaying || !circleSelectionRef.current) return;
+  const playAnimation = (reversed = isReversed) => {
+    // if (isPlaying || !circleSelectionRef.current) return;
     setIsPlaying(true);
-
+    console.log("ICI", reversed);
     currentTransitionRef.current = circleSelectionRef.current
       .transition()
       .duration(2000)
       .ease(d3.easeCubicOut)
       .delay((d, i) => i * 3)
-      .attr("cx", (d) => (isReversed ? d.x! : movedCircles.current[d.idx].x!))
-      .attr("cy", (d) => (isReversed ? d.y! : movedCircles.current[d.idx].y!))
+      .attr("cx", (d) => (reversed ? d.x! : movedCircles.current[d.idx].x!))
+      .attr("cy", (d) => (reversed ? d.y! : movedCircles.current[d.idx].y!))
       .attr("fill", (d) => d.fill)
       .on("end", () => setIsPlaying(false));
   };
@@ -66,8 +66,9 @@ const D3Banner: React.FC = () => {
 
   const reverseAnimation = () => {
     pauseAnimation();
-    setIsReversed((prev) => !prev);
-    playAnimation();
+    const newReversed = !isReversed; // Compute the new reversed value
+    setIsReversed(newReversed); // Update the state
+    playAnimation(newReversed); // Pass the computed value directly to playAnimation
   };
 
   useEffect(() => {
@@ -150,7 +151,7 @@ const D3Banner: React.FC = () => {
     >
       <svg ref={svgRef} style={{ display: "block", margin: "auto" }}></svg>
       <div style={{ textAlign: "center", margin: "20px 0", color: "#f8f3e6" }}>
-        <button onClick={playAnimation} disabled={isPlaying}>
+        <button onClick={() => playAnimation()} disabled={isPlaying}>
           Play
         </button>
         <button onClick={pauseAnimation} disabled={!isPlaying}>
